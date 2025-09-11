@@ -1,7 +1,7 @@
 ﻿using OrderService.Domain.Responses;
 using OrderService.Domain.Requests;
 
-namespace OrderService.Business;
+namespace OrderService.Business.Services;
 
 public interface IOrdersService
 {

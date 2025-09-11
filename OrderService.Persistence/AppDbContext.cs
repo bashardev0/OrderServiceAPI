@@ -6,9 +6,7 @@ namespace OrderService.Persistence
     public class AppDbContext : DbContext
     {
         public AppDbContext(DbContextOptions<AppDbContext> options)
-            : base(options)
-        {
-        }
+            : base(options) { }
 
         public DbSet<Order> Orders { get; set; }
         public DbSet<OrderItem> OrderItems { get; set; }
@@ -40,9 +38,6 @@ namespace OrderService.Persistence
                 e.HasMany(x => x.OrderItems)
                     .WithOne(i => i.Order)
                     .HasForeignKey(i => i.OrderId);
-
-                // 👇 Global filter: hide soft-deleted Orders
-                e.HasQueryFilter(x => !x.IsDeleted);
             });
 
             // -------- OrderItem --------
@@ -59,7 +54,6 @@ namespace OrderService.Persistence
                     .HasColumnName("unit_price")
                     .HasColumnType("numeric(18,2)");
 
-                // 👇 Mark as computed so EF won’t try to write it
                 e.Property(x => x.LineTotal)
                     .HasColumnName("line_total")
                     .HasColumnType("numeric(18,2)")
@@ -71,10 +65,42 @@ namespace OrderService.Persistence
                 e.Property(x => x.UpdatedDate).HasColumnName("updated_date");
                 e.Property(x => x.IsActive).HasColumnName("is_active");
                 e.Property(x => x.IsDeleted).HasColumnName("is_deleted");
-
-                // 👇 Global filter: hide soft-deleted OrderItems
-                e.HasQueryFilter(x => !x.IsDeleted);
             });
+            // ----- InventoryItem -----
+            modelBuilder.Entity<OrderService.Domain.Inventory.InventoryItem>(e =>
+            {
+                e.ToTable("items", "inventory");
+                e.HasKey(x => x.Id);
+
+                e.Property(x => x.Name).HasColumnName("Location");
+                e.Property(x => x.UnitPrice).HasColumnName("unit_price").HasColumnType("numeric(18,2)");
+
+                e.Property(x => x.CreatedBy).HasColumnName("created_by");
+                e.Property(x => x.CreatedDate).HasColumnName("created_date");
+                e.Property(x => x.UpdatedBy).HasColumnName("updated_by");
+                e.Property(x => x.UpdatedDate).HasColumnName("updated_date");
+                e.Property(x => x.IsActive).HasColumnName("is_active");
+                e.Property(x => x.IsDeleted).HasColumnName("is_deleted");
+            });
+
+            // ----- InventoryStock -----
+            modelBuilder.Entity<OrderService.Domain.Inventory.InventoryStock>(e =>
+            {
+                e.ToTable("stock", "inventory");
+                e.HasKey(x => x.Id);
+
+                e.Property(x => x.ItemId).HasColumnName("item_id");
+                e.Property(x => x.Location).HasColumnName("Location");
+                e.Property(x => x.Qty).HasColumnName("qty");
+
+                e.Property(x => x.CreatedBy).HasColumnName("created_by");
+                e.Property(x => x.CreatedDate).HasColumnName("created_date");
+                e.Property(x => x.UpdatedBy).HasColumnName("updated_by");
+                e.Property(x => x.UpdatedDate).HasColumnName("updated_date");
+                e.Property(x => x.IsActive).HasColumnName("is_active");
+                e.Property(x => x.IsDeleted).HasColumnName("is_deleted");
+            });
+
         }
     }
 }

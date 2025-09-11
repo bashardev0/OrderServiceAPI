@@ -20,7 +20,7 @@ namespace OrderService.Persistence
         }
 
         // -------------------------------------------------
-        // EF Core
+        // EF Core methods
         // -------------------------------------------------
         public async Task AddAsync(Order order, CancellationToken ct) =>
             await _db.Orders.AddAsync(order, ct);
@@ -49,6 +49,9 @@ namespace OrderService.Persistence
             return conn;
         }
 
+        // -------------------------------------------------
+        // Dapper Stored Procedures
+        // -------------------------------------------------
         public async Task<string> CreateViaProcAsync(
             long customerId,
             IEnumerable<(long productId, int qty, decimal unitPrice)> items,
@@ -95,7 +98,9 @@ namespace OrderService.Persistence
             return res ?? "{\"errorCode\":1,\"message\":\"null result\"}";
         }
 
-        // ✅ Soft Delete EF Core
+        // -------------------------------------------------
+        // Soft Delete (EF Core)
+        // -------------------------------------------------
         public async Task SoftDeleteOrderAsync(long orderId, string updatedBy, CancellationToken ct = default)
         {
             var order = await _db.Orders
@@ -109,20 +114,44 @@ namespace OrderService.Persistence
             order.UpdatedBy = updatedBy;
             order.UpdatedDate = DateTime.UtcNow;
 
-            foreach (var item in order.OrderItems)
+            if (order.OrderItems != null)
             {
-                item.IsDeleted = true;
-                item.IsActive = false;
-                item.UpdatedBy = updatedBy;
-                item.UpdatedDate = DateTime.UtcNow;
+                foreach (var item in order.OrderItems)
+                {
+                    item.IsDeleted = true;
+                    item.IsActive = false;
+                    item.UpdatedBy = updatedBy;
+                    item.UpdatedDate = DateTime.UtcNow;
+                }
             }
 
             await _db.SaveChangesAsync(ct);
         }
 
-        public Task<string> DeleteViaProcAsync(long id, string updatedBy, CancellationToken ct = default)
+        // -------------------------------------------------
+        // Optional: direct Dapper-based soft delete proc
+        // -------------------------------------------------
+        public async Task<string> DeleteViaProcAsync(long id, string updatedBy, CancellationToken ct = default)
         {
-            throw new NotImplementedException();
+            await using var conn = await OpenConnectionAsync(ct);
+
+            const string sql = @"
+                UPDATE ""order"".""order""
+                SET is_deleted = TRUE,
+                    is_active  = FALSE,
+                    updated_by = @updatedBy,
+                    updated_date = NOW()
+                WHERE id = @id
+                RETURNING json_build_object(
+                    'errorCode', 0,
+                    'message',   'Order deleted',
+                    'orderId',   id
+                )::text;";
+
+            var res = await conn.QueryFirstOrDefaultAsync<string>(
+                new CommandDefinition(sql, new { id, updatedBy }, cancellationToken: ct));
+
+            return res ?? "{\"errorCode\":1,\"message\":\"Delete failed\"}";
         }
     }
 }

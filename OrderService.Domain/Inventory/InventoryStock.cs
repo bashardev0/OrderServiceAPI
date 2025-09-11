@@ -1,26 +1,27 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
+using System.Linq;
+using System.Text;
+using System.Text.Json.Serialization;
+using System.Threading.Tasks;
 
-namespace OrderService.Domain.Entities
+namespace OrderService.Domain.Inventory
 {
-    public class Order
+    public class InventoryStock
     {
         public long Id { get; set; }
-        public long CustomerId { get; set; }
-        public string Status { get; set; } = "NEW";
-        public decimal TotalAmount { get; set; }
+        public long ItemId { get; set; }
+        
+        public string? Location { get; set; } = "Main";
+        public int Qty { get; set; }
 
-        // Audit columns
+        // Audit
         public string CreatedBy { get; set; } = "system";
         public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
         public string? UpdatedBy { get; set; }
         public DateTime? UpdatedDate { get; set; }
-
-        // Soft delete flags
         public bool IsActive { get; set; } = true;
         public bool IsDeleted { get; set; } = false;
-
-        // Navigation property
-        public List<OrderItem> OrderItems { get; set; } = new();
     }
 }
