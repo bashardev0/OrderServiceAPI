@@ -22,7 +22,7 @@ public class CreateOrderItemRequest
 
     [DefaultValue(0)]   // 👈 Swagger shows 0 by default
     [Range(1, int.MaxValue, ErrorMessage = "Quantity must be at least 1.")]
-    public int Qty { get; set; } = 0;
+    public int quantity { get; set; } = 0;
 
     [DefaultValue(0.0)] // 👈 Swagger shows 0.0 by default
     [Range(0.01, double.MaxValue, ErrorMessage = "Unit price must be at least 0.01.")]

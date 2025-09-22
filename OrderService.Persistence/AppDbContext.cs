@@ -49,7 +49,7 @@ namespace OrderService.Persistence
                 e.Property(x => x.Id).HasColumnName("id");
                 e.Property(x => x.OrderId).HasColumnName("order_id");
                 e.Property(x => x.ProductId).HasColumnName("product_id");
-                e.Property(x => x.Qty).HasColumnName("qty");
+                e.Property(x => x.quantity).HasColumnName("quantity");
                 e.Property(x => x.UnitPrice)
                     .HasColumnName("unit_price")
                     .HasColumnType("numeric(18,2)");
@@ -57,7 +57,7 @@ namespace OrderService.Persistence
                 e.Property(x => x.LineTotal)
                     .HasColumnName("line_total")
                     .HasColumnType("numeric(18,2)")
-                    .HasComputedColumnSql("(qty * unit_price)", stored: true);
+                    .HasComputedColumnSql("(quantity * unit_price)", stored: true);
 
                 e.Property(x => x.CreatedBy).HasColumnName("created_by");
                 e.Property(x => x.CreatedDate).HasColumnName("created_date");
@@ -91,7 +91,7 @@ namespace OrderService.Persistence
 
                 e.Property(x => x.ItemId).HasColumnName("item_id");
                 e.Property(x => x.Location).HasColumnName("Location");
-                e.Property(x => x.Qty).HasColumnName("qty");
+                e.Property(x => x.quantity).HasColumnName("quantity");
 
                 e.Property(x => x.CreatedBy).HasColumnName("created_by");
                 e.Property(x => x.CreatedDate).HasColumnName("created_date");

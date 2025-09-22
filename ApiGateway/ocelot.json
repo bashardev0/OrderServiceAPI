@@ -1,0 +1,88 @@
+{
+  "Routes": [
+    {
+      "DownstreamPathTemplate": "/api/auth/{everything}",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "localhost",
+          "Port": 7000
+        }
+      ],
+      "UpstreamPathTemplate": "/auth/{everything}",
+      "UpstreamHttpMethod": [ "POST", "GET" ],
+      "HttpHandlerOptions": { "DangerousAcceptAnyServerCertificateValidator": true }
+    },
+    {
+      "DownstreamPathTemplate": "/api/inventory/{everything}",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "localhost",
+          "Port": 7000
+        }
+      ],
+      "UpstreamPathTemplate": "/inventory/{everything}",
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ],
+      "AuthenticationOptions": { "AuthenticationProviderKey": "Bearer" },
+      "HttpHandlerOptions": { "DangerousAcceptAnyServerCertificateValidator": true }
+    },
+    {
+      "DownstreamPathTemplate": "/api/orders/{everything}",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "localhost",
+          "Port": 7000
+        }
+      ],
+      "UpstreamPathTemplate": "/orders/{everything}",
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ],
+      "AuthenticationOptions": { "AuthenticationProviderKey": "Bearer" },
+      "HttpHandlerOptions": { "DangerousAcceptAnyServerCertificateValidator": true }
+    },
+    {
+      "DownstreamPathTemplate": "/api/inventory/stock/{everything}",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "localhost",
+          "Port": 7000
+        }
+      ],
+      "UpstreamPathTemplate": "/stock/{everything}",
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ],
+      "AuthenticationOptions": { "AuthenticationProviderKey": "Bearer" },
+      "HttpHandlerOptions": { "DangerousAcceptAnyServerCertificateValidator": true }
+    },
+    {
+      "DownstreamPathTemplate": "/health/db",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "localhost",
+          "Port": 7000
+        }
+      ],
+      "UpstreamPathTemplate": "/health/db",
+      "UpstreamHttpMethod": [ "GET" ],
+      "HttpHandlerOptions": { "DangerousAcceptAnyServerCertificateValidator": true }
+    },
+    {
+      "DownstreamPathTemplate": "/health/db",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "localhost",
+          "Port": 7000
+        }
+      ],
+      "UpstreamPathTemplate": "/health",
+      "UpstreamHttpMethod": [ "GET" ],
+      "HttpHandlerOptions": { "DangerousAcceptAnyServerCertificateValidator": true }
+    }
+  ],
+  "GlobalConfiguration": {
+    "BaseUrl": "http://localhost:5075"
+  }
+}

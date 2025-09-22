@@ -12,10 +12,10 @@ namespace OrderService.Domain.Entities
 
         // Product + pricing
         public long ProductId { get; set; }
-        public int Qty { get; set; } = 0;
+        public int quantity { get; set; } = 0;
         public decimal UnitPrice { get; set; } = 0;
 
-        // Computed column in DB (qty * unit_price)
+        // Computed column in DB (quantity * unit_price)
         public decimal LineTotal { get; set; }
 
         // Audit fields

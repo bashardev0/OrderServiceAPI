@@ -35,7 +35,7 @@ namespace OrderService.Domain.Inventory
         public long Id { get; set; }
         public long ItemId { get; set; }
         public string? Location { get; set; }
-        public int Qty { get; set; }
+        public int quantity { get; set; }
 
         public string CreatedBy { get; set; } = "";
         public DateTime CreatedDate { get; set; }
@@ -48,13 +48,13 @@ namespace OrderService.Domain.Inventory
     public sealed class StockCreateRequest
     {
         public long ItemId { get; set; }
-        public string? Location { get; set; }
-        public int Qty { get; set; }
+        public string Location { get; set; } = "";
+        public int Quantity { get; set; }
     }
 
     public sealed class StockUpdateRequest
     {
-        public string? Location { get; set; }
-        public int? Qty { get; set; }
+        public string Location { get; set; } = "";
+        public int Quantity { get; set; }
     }
 }

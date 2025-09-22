@@ -28,7 +28,7 @@ namespace OrderService.Domain.Responses
         public long ProductId { get; set; }
 
         [DefaultValue(0)]
-        public int Qty { get; set; } = 0;
+        public int quantity { get; set; } = 0;
 
         [DefaultValue(0.0)]
         public decimal UnitPrice { get; set; } = 0.0m;

@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -7,23 +8,26 @@ using Dapper;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using OrderService.Domain.Entities;
+using Microsoft.Extensions.Logging;
 
 namespace OrderService.Persistence
 {
     public sealed class OrderRepository : IOrderRepository
     {
         private readonly AppDbContext _db;
+        private readonly ILogger<OrderRepository> _logger; // ← added
 
-        public OrderRepository(AppDbContext db)
+        public OrderRepository(AppDbContext db, ILogger<OrderRepository> logger) // ← logger injected
         {
             _db = db;
+            _logger = logger;
         }
 
         // -------------------------------------------------
         // EF Core methods
         // -------------------------------------------------
         public async Task AddAsync(Order order, CancellationToken ct) =>
-            await _db.Orders.AddAsync(order, ct);
+            await _db.Orders.AddAsync(order, ct); // NOTE: if your DbSet is Orders (capital O), change back to _db.Orders
 
         public async Task<Order?> GetByIdAsync(long id, CancellationToken ct) =>
             await _db.Orders
@@ -53,49 +57,98 @@ namespace OrderService.Persistence
         // Dapper Stored Procedures
         // -------------------------------------------------
         public async Task<string> CreateViaProcAsync(
-            long customerId,
-            IEnumerable<(long productId, int qty, decimal unitPrice)> items,
-            string createdBy,
-            CancellationToken ct = default)
+    long customerId,
+    IEnumerable<(long productId, int quantity, decimal unitPrice)> items,
+    string createdBy,
+    CancellationToken ct = default)
         {
-            var itemsJson = JsonSerializer.Serialize(items.Select(x => new
+            try
             {
-                product_id = x.productId,
-                qty = x.qty,
-                unit_price = x.unitPrice
-            }));
+                // Null/empty safe handling
+                var itemsSeq = items ?? Enumerable.Empty<(long productId, int quantity, decimal unitPrice)>();
+                var itemCount = itemsSeq.Count();
+                if (itemCount == 0)
+                    return "{\"errorCode\":400,\"message\":\"items collection is required\"}";
 
-            await using var conn = await OpenConnectionAsync(ct);
-            const string sql = "SELECT \"order\".sp_create_order(@p_customer_id, @p_items::jsonb, @p_created_by)";
-            var res = await conn.QueryFirstOrDefaultAsync<string>(
-                new CommandDefinition(sql,
-                    new { p_customer_id = customerId, p_items = itemsJson, p_created_by = createdBy },
-                    cancellationToken: ct));
+                // Build JSON payload
+                var itemsJson = JsonSerializer.Serialize(
+                    itemsSeq.Select(x => new
+                    {
+                        product_id = x.productId,
+                        qty = x.quantity,
+                        unit_price = x.unitPrice
+                    })
+                );
 
-            return res ?? "{\"errorCode\":1,\"message\":\"null result\"}";
+                await using var conn = await OpenConnectionAsync(ct);
+                const string sql = "SELECT \"order\".sp_create_order(@p_customer_id, @p_items::jsonb, @p_created_by)";
+                var res = await conn.QueryFirstOrDefaultAsync<string>(
+                    new CommandDefinition(sql,
+                        new { p_customer_id = customerId, p_items = itemsJson, p_created_by = createdBy },
+                        cancellationToken: ct));
+
+                return res ?? "{\"errorCode\":1,\"message\":\"null result\"}";
+            }
+            catch (Exception ex)
+            {
+                return JsonSerializer.Serialize(new
+                {
+                    errorCode = 500,
+                    message = $"CreateViaProc failed: {ex.Message}"
+                });
+            }
         }
+
 
         public async Task<string> GetViaProcAsync(long id, CancellationToken ct = default)
         {
-            await using var conn = await OpenConnectionAsync(ct);
-            const string sql = "SELECT \"order\".sp_get_order(@p_id)";
-            var res = await conn.QueryFirstOrDefaultAsync<string>(
-                new CommandDefinition(sql, new { p_id = id }, cancellationToken: ct));
+            try
+            {
+                _logger.LogInformation("sp_get_order id={Id}", id);
 
-            return res ?? "{\"errorCode\":1,\"message\":\"null result\"}";
+                await using var conn = await OpenConnectionAsync(ct);
+                const string sql = "SELECT \"order\".sp_get_order(@p_id)";
+                var res = await conn.QueryFirstOrDefaultAsync<string>(
+                    new CommandDefinition(sql, new { p_id = id }, cancellationToken: ct));
+
+                return res ?? "{\"errorCode\":1,\"message\":\"null result\"}";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "GetViaProcAsync failed id={Id}", id);
+                return JsonSerializer.Serialize(new
+                {
+                    errorCode = 500,
+                    message = $"GetViaProc failed: {ex.Message}"
+                });
+            }
         }
 
         public async Task<string> UpdateStatusViaProcAsync(
             long id, string status, string updatedBy, CancellationToken ct = default)
         {
-            await using var conn = await OpenConnectionAsync(ct);
-            const string sql = "SELECT \"order\".sp_update_order_status(@p_id, @p_status, @p_updated_by)";
-            var res = await conn.QueryFirstOrDefaultAsync<string>(
-                new CommandDefinition(sql,
-                    new { p_id = id, p_status = status, p_updated_by = updatedBy },
-                    cancellationToken: ct));
+            try
+            {
+                _logger.LogInformation("sp_update_order_status id={Id} status={Status}", id, status);
 
-            return res ?? "{\"errorCode\":1,\"message\":\"null result\"}";
+                await using var conn = await OpenConnectionAsync(ct);
+                const string sql = "SELECT \"order\".sp_update_order_status(@p_id, @p_status, @p_updated_by)";
+                var res = await conn.QueryFirstOrDefaultAsync<string>(
+                    new CommandDefinition(sql,
+                        new { p_id = id, p_status = status, p_updated_by = updatedBy },
+                        cancellationToken: ct));
+
+                return res ?? "{\"errorCode\":1,\"message\":\"null result\"}";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "UpdateStatusViaProcAsync failed id={Id}", id);
+                return JsonSerializer.Serialize(new
+                {
+                    errorCode = 500,
+                    message = $"UpdateStatusViaProc failed: {ex.Message}"
+                });
+            }
         }
 
         // -------------------------------------------------
@@ -133,25 +186,39 @@ namespace OrderService.Persistence
         // -------------------------------------------------
         public async Task<string> DeleteViaProcAsync(long id, string updatedBy, CancellationToken ct = default)
         {
-            await using var conn = await OpenConnectionAsync(ct);
+            try
+            {
+                _logger.LogInformation("soft delete (proc) id={Id} by={User}", id, updatedBy);
 
-            const string sql = @"
-                UPDATE ""order"".""order""
-                SET is_deleted = TRUE,
-                    is_active  = FALSE,
-                    updated_by = @updatedBy,
-                    updated_date = NOW()
-                WHERE id = @id
-                RETURNING json_build_object(
-                    'errorCode', 0,
-                    'message',   'Order deleted',
-                    'orderId',   id
-                )::text;";
+                await using var conn = await OpenConnectionAsync(ct);
 
-            var res = await conn.QueryFirstOrDefaultAsync<string>(
-                new CommandDefinition(sql, new { id, updatedBy }, cancellationToken: ct));
+                const string sql = @"
+                    UPDATE ""order"".""order""
+                    SET is_deleted = TRUE,
+                        is_active  = FALSE,
+                        updated_by = @updatedBy,
+                        updated_date = NOW()
+                    WHERE id = @id
+                    RETURNING json_build_object(
+                        'errorCode', 0,
+                        'message',   'Order deleted',
+                        'orderId',   id
+                    )::text;";
 
-            return res ?? "{\"errorCode\":1,\"message\":\"Delete failed\"}";
+                var res = await conn.QueryFirstOrDefaultAsync<string>(
+                    new CommandDefinition(sql, new { id, updatedBy }, cancellationToken: ct));
+
+                return res ?? "{\"errorCode\":1,\"message\":\"Delete failed\"}";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "DeleteViaProcAsync failed id={Id}", id);
+                return JsonSerializer.Serialize(new
+                {
+                    errorCode = 500,
+                    message = $"DeleteViaProc failed: {ex.Message}"
+                });
+            }
         }
     }
 }

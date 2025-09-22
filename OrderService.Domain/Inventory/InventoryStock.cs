@@ -14,7 +14,7 @@ namespace OrderService.Domain.Inventory
         public long ItemId { get; set; }
         
         public string? Location { get; set; } = "Main";
-        public int Qty { get; set; }
+        public int quantity { get; set; }
 
         // Audit
         public string CreatedBy { get; set; } = "system";

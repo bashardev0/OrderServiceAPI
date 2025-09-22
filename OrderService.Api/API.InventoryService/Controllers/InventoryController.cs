@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using OrderService.Business.Inventory;
 using OrderService.Domain.Inventory;
 using OrderService.Domain.Responses;
+using System.Net;
 using System.Security.Claims;
 using System.Threading;
 using System.Threading.Tasks;

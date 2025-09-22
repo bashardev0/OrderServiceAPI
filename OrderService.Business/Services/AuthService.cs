@@ -1,5 +1,7 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
 using Dapper;
+using Microsoft.Extensions.Logging;           // ← add
 using OrderService.Persistence;
 
 namespace OrderService.Business.Services
@@ -7,12 +9,26 @@ namespace OrderService.Business.Services
     public class AuthService : IAuthService
     {
         private readonly IUnitOfWork _uow;
+        private readonly ILogger<AuthService> _logger;   // ← add
 
-        public AuthService(IUnitOfWork uow) => _uow = uow;
+        public AuthService(IUnitOfWork uow, ILogger<AuthService> logger)   // ← inject logger
+        {
+            _uow = uow;
+            _logger = logger;
+        }
 
         public async Task<AuthUser?> ValidateAsync(string username, string password)
         {
-            const string sql = @"
+            try
+            {
+                // quick guard: invalid input -> no DB hit
+                if (string.IsNullOrWhiteSpace(username) || string.IsNullOrEmpty(password))
+                {
+                    _logger.LogWarning("AUTH FAIL | Missing username or password");
+                    return null;
+                }
+
+                const string sql = @"
 SELECT id, username, role
 FROM ""order"".login
 WHERE username = @username
@@ -21,15 +37,28 @@ WHERE username = @username
   AND password_hash = crypt(@password, password_hash)
 LIMIT 1;";
 
-            await _uow.OpenConnectionAsync();
+                await _uow.OpenConnectionAsync();
 
-            var row = await _uow.Connection
-                .QuerySingleOrDefaultAsync<(long id, string username, string role)>(
-                    sql, new { username, password });
+                var row = await _uow.Connection
+                    .QuerySingleOrDefaultAsync<(long id, string username, string role)>(
+                        sql, new { username, password });
 
-            if (row.username is null) return null;
+                if (string.IsNullOrEmpty(row.username))
+                {
+                    _logger.LogWarning("AUTH FAIL | Username={Username}", username);
+                    return null;
+                }
 
-            return new AuthUser(row.id, row.username, row.role);
+                _logger.LogInformation("SUCCESS | Login Username={Username} UserId={UserId}",
+                    row.username, row.id);
+
+                return new AuthUser(row.id, row.username, row.role);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "ValidateAsync failed for {Username}", username);
+                return null;
+            }
         }
     }
 }

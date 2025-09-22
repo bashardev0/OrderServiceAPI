@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.14.36414.22 d17.14
+VisualStudioVersion = 17.14.36414.22
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OrderService.Api", "OrderService.Api\OrderService.Api.csproj", "{C2CF25D1-A356-4665-961A-811890847570}"
 EndProject
@@ -10,6 +10,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OrderService.Persistence", "OrderService.Persistence\OrderService.Persistence.csproj", "{D093C637-C1FC-48FE-A4C3-A471B7281539}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OrderService.Business", "OrderService.Business\OrderService.Business.csproj", "{874173F0-8AD2-415E-8AAB-A30D0BEE5172}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ApiGateway", "ApiGateway\ApiGateway.csproj", "{CF8C5231-A7FF-4121-8598-51A1D33B83C7}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -33,6 +35,10 @@ Global
 		{874173F0-8AD2-415E-8AAB-A30D0BEE5172}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{874173F0-8AD2-415E-8AAB-A30D0BEE5172}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{874173F0-8AD2-415E-8AAB-A30D0BEE5172}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CF8C5231-A7FF-4121-8598-51A1D33B83C7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CF8C5231-A7FF-4121-8598-51A1D33B83C7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CF8C5231-A7FF-4121-8598-51A1D33B83C7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CF8C5231-A7FF-4121-8598-51A1D33B83C7}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

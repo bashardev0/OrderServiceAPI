@@ -1,4 +1,9 @@
-﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+﻿using System;
+using System.Linq;
+using System.Text;
+using System.Text.Json;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -9,8 +14,6 @@ using OrderService.Business.Services;
 using OrderService.Persistence;
 using OrderService.Persistence.Repositories;
 using Serilog;
-using System;
-using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -30,6 +33,40 @@ builder.Services.AddCors(o => o.AddPolicy("AllowAll",
 
 // ---------------- MVC + Swagger ----------------
 builder.Services.AddControllers();
+
+// Log automatic 400s (model validation failures) with the exact fields/messages
+builder.Services.Configure<ApiBehaviorOptions>(options =>
+{
+    options.InvalidModelStateResponseFactory = context =>
+    {
+        var logger = context.HttpContext.RequestServices
+            .GetRequiredService<ILoggerFactory>()
+            .CreateLogger("ModelValidation");
+
+        var errors = context.ModelState
+            .Where(kvp => kvp.Value?.Errors?.Count > 0)
+            .Select(kvp => new
+            {
+                Field = kvp.Key,
+                Messages = kvp.Value!.Errors.Select(e =>
+                    string.IsNullOrWhiteSpace(e.ErrorMessage)
+                        ? e.Exception?.Message
+                        : e.ErrorMessage)
+            });
+
+        var path = context.HttpContext.Request.Path.ToString();
+        var method = context.HttpContext.Request.Method;
+        var user = context.HttpContext.User?.Identity?.Name ?? "anonymous";
+
+        logger.LogWarning(
+            "VALIDATION FAIL | {Method} {Path} | User={User} | Errors={ErrorsJson}",
+            method, path, user, JsonSerializer.Serialize(errors)
+        );
+
+        return new BadRequestObjectResult(new ValidationProblemDetails(context.ModelState));
+    };
+});
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -75,6 +112,11 @@ builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<IOrdersService, OrdersService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 
+//search
+builder.Services.AddScoped<IItemSearchRepository, ItemSearchRepository>();
+builder.Services.AddScoped<IItemSearchService, ItemSearchService>();
+
+
 // ---------------- JWT Auth ----------------
 var jwt = builder.Configuration.GetSection("Jwt").Get<JwtOptions>()!;
 builder.Services.AddSingleton(jwt);
@@ -100,44 +142,45 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("RequireAdmin", p => p.RequireRole("Admin"));
     options.AddPolicy("RequireManagerOrAdmin", p => p.RequireRole("Manager", "Admin"));
 });
-// Inventory (Week 2)
+
+// ---------------- Inventory services ----------------
 builder.Services.AddScoped<IInventoryRepository, InventoryRepository>();
 builder.Services.AddScoped<IInventoryService, InventoryService>();
 
 var app = builder.Build();
 
 // ---------------- Pipeline (order matters) ----------------
-app.UseSerilogRequestLogging();
-
-// 1) Expose the OpenAPI JSON first (runtime-generated)
+// 1) OpenAPI JSON & UI
 app.UseSwagger(c =>
 {
-    // standard route: /swagger/{documentName}/swagger.json -> /swagger/v1/swagger.json
     c.RouteTemplate = "swagger/{documentName}/swagger.json";
 });
 
-// 2) Serve the Swagger UI at /swagger
 app.UseSwaggerUI(c =>
 {
-    // IMPORTANT: relative path (no leading slash)
     c.SwaggerEndpoint("v1/swagger.json", "OrderService API v1");
     c.RoutePrefix = "swagger";
     c.DocumentTitle = "OrderService API";
 });
 
-// 3) Skip custom middleware for swagger requests (avoid interfering with JSON/UI)
+// 2) HTTPS, routing, CORS
+app.UseHttpsRedirection();
+app.UseRouting();
+app.UseCors("AllowAll");
+
+// 3) Authenticate so HttpContext.User is available to later middleware
+app.UseAuthentication();
+
+// 4) Correlation/User enrichment for non-swagger requests
 app.UseWhen(ctx => !ctx.Request.Path.StartsWithSegments("/swagger"), branch =>
 {
     branch.UseMiddleware<OrderService.Api.Middleware.CorrelationIdMiddleware>();
 });
 
-// Root -> Swagger UI
-//app.MapGet("/", () => Results.Redirect("/swagger"));
+// 5) Request logging AFTER correlation so logs contain CorrelationId/User
+app.UseSerilogRequestLogging();
 
-app.UseHttpsRedirection();
-app.UseRouting();
-app.UseCors("AllowAll");      // after routing, before auth
-app.UseAuthentication();
+// 6) Authorization
 app.UseAuthorization();
 
 app.MapControllers();

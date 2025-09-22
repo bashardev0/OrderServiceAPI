@@ -20,5 +20,7 @@ namespace OrderService.Business.Inventory
         Task<BaseResponse<object>> DeleteStockAsync(long id, string actor, CancellationToken ct);
         Task<BaseResponse<object>> GetStockAsync(long id, CancellationToken ct);
         Task<BaseResponse<object>> GetStocksAsync(CancellationToken ct);
+     
+
     }
 }

@@ -19,7 +19,7 @@ namespace OrderService.Persistence
         // Dapper/SP
         Task<string> CreateViaProcAsync(
             long customerId,
-            IEnumerable<(long productId, int qty, decimal unitPrice)> items,
+            IEnumerable<(long productId, int quantity, decimal unitPrice)> items,
             string createdBy,
             CancellationToken ct = default);
 
